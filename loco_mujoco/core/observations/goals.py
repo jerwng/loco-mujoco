@@ -265,6 +265,21 @@ class GoalRandomRootVelocityState:
     goal_vel_yaw: float
 
 
+@struct.dataclass
+class GoalRandomVelocityWithHeadingState:
+    """
+    State class for velocity goal with target heading.
+
+    Attributes:
+        goal_vel_x (float): Goal velocity in the x direction.
+        goal_vel_y (float): Goal velocity in the y direction.
+        target_heading (float): Target heading in radians.
+    """
+    goal_vel_x: float
+    goal_vel_y: float
+    target_heading: float
+
+
 class GoalRandomRootVelocity(Goal, RootVelocityArrowVisualizer):
     """
     A class representing a random root velocity goal.
@@ -374,7 +389,7 @@ class GoalRandomRootVelocity(Goal, RootVelocityArrowVisualizer):
         key = carry.key
         if backend == np:
             goal_vel = np.random.uniform(
-                [-self.max_x_vel, -self.max_y_vel, -self.max_yaw_vel],
+                [0, -self.max_y_vel, -self.max_yaw_vel],
                 [self.max_x_vel, self.max_y_vel, self.max_yaw_vel]
             )
         else:
@@ -382,7 +397,7 @@ class GoalRandomRootVelocity(Goal, RootVelocityArrowVisualizer):
             goal_vel = jax.random.uniform(
                 subkey,
                 shape=(3,),
-                minval=jnp.array([-self.max_x_vel, -self.max_y_vel, -self.max_yaw_vel]),
+                minval=jnp.array([0, -self.max_y_vel, -self.max_yaw_vel]),
                 maxval=jnp.array([self.max_x_vel, self.max_y_vel, self.max_yaw_vel])
             )
 
@@ -427,6 +442,208 @@ class GoalRandomRootVelocity(Goal, RootVelocityArrowVisualizer):
     def dim(self) -> int:
         """Get the dimension of the goal."""
         return 3
+
+    @classmethod
+    def data_type(cls) -> Any:
+        """Return the data type used by this goal."""
+        return GoalRandomRootVelocityState
+
+
+class GoalRandomVelocityWithHeading(Goal, RootVelocityArrowVisualizer):
+    """
+    A class representing a velocity goal with target heading.
+
+    This goal samples random x, y velocities and a target heading (absolute angle).
+    The policy receives [vel_x, vel_y, target_heading] and must learn to move
+    at the commanded velocity while turning toward the target heading.
+
+    Args:
+        info_props (Dict): Information properties required for initialization.
+        max_x_vel (float): Maximum velocity in the x direction.
+        max_y_vel (float): Maximum velocity in the y direction.
+        max_heading (float): Maximum heading deviation from 0 (radians). Defaults to π.
+        **kwargs: Additional keyword arguments.
+    """
+
+    def __init__(self,
+                 info_props: Dict,
+                 max_x_vel: float = 1.0,
+                 max_y_vel: float = 1.0,
+                 max_heading: float = np.pi,
+                 **kwargs):
+
+        self._traj_goal_ind = None
+        self.max_x_vel = max_x_vel
+        self.max_y_vel = max_y_vel
+        self.max_heading = max_heading
+        self.upper_body_xml_name = info_props["upper_body_xml_name"]
+        self.free_jnt_name = info_props["root_free_joint_xml_name"]
+
+        # To be initialized from Mujoco
+        self._root_body_id = None
+        self._root_jnt_qpos_start_id = None
+        self._free_jnt_qpos_id = None
+
+        # call visualizer init
+        RootVelocityArrowVisualizer.__init__(self, info_props)
+
+        # call goal init
+        n_visual_geoms = self._arrow_n_visual_geoms \
+            if "visualize_goal" in kwargs.keys() and kwargs["visualize_goal"] else 0
+        super().__init__(info_props, n_visual_geoms=n_visual_geoms, **kwargs)
+
+    def _init_from_mj(self,
+                      env: Any,
+                      model: Union[MjModel, Model],
+                      data: Union[MjData, Data],
+                      current_obs_size: int):
+        """
+        Initialize the goal from Mujoco model and data.
+
+        Args:
+            env (Any): The environment instance.
+            model (Union[MjModel, Model]): The Mujoco model.
+            data (Union[MjData, Data]): The Mujoco data.
+            current_obs_size (int): Current observation size.
+        """
+        self.min = [-np.inf] * self.dim
+        self.max = [np.inf] * self.dim
+        self.obs_ind = np.array([j for j in range(current_obs_size, current_obs_size + self.dim)])
+        self._root_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, self.upper_body_xml_name)
+        self._free_jnt_qpos_id = np.array(mj_jntname2qposid(self.free_jnt_name, model))
+        self._initialized_from_mj = True
+
+    @property
+    def has_visual(self) -> bool:
+        """Check if the goal supports visualization."""
+        return True
+
+    def init_state(self,
+                   env: Any,
+                   key: jax.random.PRNGKey,
+                   model: Union[MjModel, Model],
+                   data: Union[MjData, Data],
+                   backend: ModuleType) -> GoalRandomVelocityWithHeadingState:
+        """
+        Initialize the goal state.
+
+        Args:
+            env (Any): The environment instance.
+            key (jax.random.PRNGKey): Random key for sampling.
+            model (Union[MjModel, Any]): The Mujoco model.
+            data (Union[MjData, Any]): The Mujoco data.
+            backend (ModuleType): The backend (numpy or jax).
+
+        Returns:
+            GoalRandomVelocityWithHeadingState: Initialized state.
+        """
+        return GoalRandomVelocityWithHeadingState(0.0, 0.0, 0.0)
+
+    def reset_state(self,
+                    env: Any,
+                    model: Union[MjModel, Model],
+                    data: Union[MjData, Data],
+                    carry: Any,
+                    backend: ModuleType) -> Tuple[Union[MjData, Any], Any]:
+        """
+        Reset the goal state with random velocities and target heading.
+
+        Args:
+            env (Any): The environment instance.
+            model (Union[MjModel, Any]): The Mujoco model.
+            data (Union[MjData, Any]): The Mujoco data.
+            carry (Any): Carry object.
+            backend (ModuleType): The backend (numpy or jax).
+
+        Returns:
+            Tuple[Union[MjData, Any], Any]: Updated data and carry.
+        """
+        key = carry.key
+        if backend == np:
+            goal_vel = np.random.uniform(
+                [0, -self.max_y_vel, -self.max_heading],
+                [self.max_x_vel, self.max_y_vel, self.max_heading]
+            )
+            goal_state = GoalRandomVelocityWithHeadingState(goal_vel[0], goal_vel[1], goal_vel[2])
+        else:
+            key, subkey = jax.random.split(key)
+            goal_vel = jax.random.uniform(
+                subkey,
+                shape=(3,),
+                minval=jnp.array([0, -self.max_y_vel, -self.max_heading]),
+                maxval=jnp.array([self.max_x_vel, self.max_y_vel, self.max_heading])
+            )
+            goal_state = GoalRandomVelocityWithHeadingState(
+                goal_vel[0], goal_vel[1], goal_vel[2]
+            )
+
+        observation_states = carry.observation_states.replace(**{self.name: goal_state})
+        return data, carry.replace(key=key, observation_states=observation_states)
+
+    def get_obs_and_update_state(self,
+                                 env: Any,
+                                 model: Union[MjModel, Model],
+                                 data: Union[MjData, Data],
+                                 carry: Any,
+                                 backend: ModuleType) -> Tuple[Union[np.ndarray, jnp.ndarray], Any]:
+        """
+        Get the current goal observation and update the state.
+
+        Args:
+            env (Any): The environment instance.
+            model (Union[MjModel, Model]): The Mujoco model.
+            data (Union[MjData, Data]): The Mujoco data.
+            carry (Any): Carry object.
+            backend (ModuleType): The backend (numpy or jax).
+
+        Returns:
+            Tuple[Union[np.ndarray, jnp.ndarray], Any]: Goal observation and updated carry.
+        """
+        state = getattr(carry.observation_states, self.name)
+        goal_vel_x = state.goal_vel_x
+        goal_vel_y = state.goal_vel_y
+        target_heading = state.target_heading
+        
+        goal = backend.array([goal_vel_x, goal_vel_y, target_heading])
+        
+        # For visualization, convert heading to yaw velocity (approximate)
+        if self.visualize_goal:
+            # Get current heading
+            qpos = data.qpos[self._free_jnt_qpos_id]
+            current_quat = qpos[3:7]
+            
+            if backend == np:
+                current_heading = np_R.from_quat(
+                    quat_scalarfirst2scalarlast(current_quat)
+                ).as_euler('xyz')[2]
+                heading_error = target_heading - current_heading
+                heading_error = np.arctan2(np.sin(heading_error), np.cos(heading_error))
+                approx_yaw_vel = 2.0 * heading_error  # Proportional control for visualization
+            else:
+                current_heading = jnp_R.from_quat(
+                    quat_scalarfirst2scalarlast(current_quat)
+                ).as_euler('xyz')[2]
+                heading_error = target_heading - current_heading
+                heading_error = jnp.arctan2(jnp.sin(heading_error), jnp.cos(heading_error))
+                approx_yaw_vel = 2.0 * heading_error
+            
+            goal_visual = backend.array([goal_vel_x, goal_vel_y, 0.0, 0.0, 0.0, approx_yaw_vel])
+            carry = self.set_visuals(
+                goal_visual, env, model, data, carry, self._root_body_id,
+                self._free_jnt_qpos_id, self.visual_geoms_idx, backend
+            )
+
+        return goal, carry
+
+    @property
+    def dim(self) -> int:
+        """Get the dimension of the goal."""
+        return 3
+
+    @classmethod
+    def data_type(cls) -> Any:
+        """Return the data type used by this goal."""
+        return GoalRandomVelocityWithHeadingState
 
 
 @struct.dataclass
