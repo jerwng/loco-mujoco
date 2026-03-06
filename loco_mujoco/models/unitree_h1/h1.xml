@@ -163,6 +163,7 @@ Modified by Firas Al-Hafez 2024.
         </body>
       </body>
       <body name="torso_link">
+        <camera name="egocentric_cam" pos="0.08 0 0.66" euler="1.5708 -1.5708 0"/>
         <site name="upper_body_mimic" class="mimic" pos="0.05 0.0 0.3"/>
         <site name="head_mimic" class="mimic" pos="0.0 0.0 0.6"/>
         <inertial pos="0.000489 0.002797 0.20484" quat="0.999989 -0.00130808 -0.00282289 -0.00349105" mass="17.789"
