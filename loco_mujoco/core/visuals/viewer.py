@@ -49,7 +49,7 @@ class MujocoViewer:
                  default_camera_mode="static", hide_menu_on_startup=None,
                  geom_group_visualization_on_startup=None,
                  mimic_site_visualization_on_startup=False,
-                 headless=False, recorder_params=None):
+                 headless=False, recorder_params=None, show_visual_geoms=True):
         """
         Constructor.
 
@@ -137,7 +137,7 @@ class MujocoViewer:
             self._camera_params = self.get_default_camera_params()
         else:
             self._camera_params = self._assert_camera_params(camera_params)
-        self._all_camera_modes = ("static", "follow", "top_static")
+        self._all_camera_modes = ("static", "follow", "top_static", "ego_head")
         self._camera_mode_iter = cycle(self._all_camera_modes)
         self._camera_mode = None
         self._camera_mode_target = next(self._camera_mode_iter)
@@ -164,6 +164,7 @@ class MujocoViewer:
         self._datas_for_parallel_render = None
         self._datas_for_parallel_render = None
         self._visual_geom_offsets = None
+        self._show_visual_geoms = show_visual_geoms
 
         if record:
             if recorder_params is None:
@@ -364,7 +365,7 @@ class MujocoViewer:
                     'Ran out of geoms. maxgeom: %d' %
                     self._scene.ngeom.maxgeom)
 
-    def render(self, data, carry, record):
+    def render(self, data, record):
         """
         Main rendering function.
 
@@ -390,23 +391,24 @@ class MujocoViewer:
                                    self._scene)
 
             # add visual geoms
-            carry_visual_start_idx = self._scene.ngeom
-            for j in range(carry.user_scene.ngeoms):
-                if self._scene.ngeom > self._scene.maxgeom:
-                    raise RuntimeError(
-                        'Ran out of geoms. maxgeom: %d' %
-                        self._scene.ngeom.maxgeom)
-                mujoco.mjv_initGeom(self._scene.geoms[carry_visual_start_idx + j],
-                                    carry.user_scene.geoms.type[j],
-                                    carry.user_scene.geoms.size[j],
-                                    carry.user_scene.geoms.pos[j],
-                                    carry.user_scene.geoms.mat[j],
-                                    carry.user_scene.geoms.rgba[j])
-                # set dataid to be able to identify the geom in the user scene
-                self._scene.geoms[carry_visual_start_idx + j].dataid = int(carry.user_scene.geoms.dataid[j]*2)
-                self._scene.geoms[carry_visual_start_idx + j].category =  mujoco.mjtCatBit.mjCAT_DECOR
+            if self._show_visual_geoms:
+                carry_visual_start_idx = self._scene.ngeom
+                for j in range(carry.user_scene.ngeoms):
+                    if self._scene.ngeom > self._scene.maxgeom:
+                        raise RuntimeError(
+                            'Ran out of geoms. maxgeom: %d' %
+                            self._scene.ngeom.maxgeom)
+                    mujoco.mjv_initGeom(self._scene.geoms[carry_visual_start_idx + j],
+                                        carry.user_scene.geoms.type[j],
+                                        carry.user_scene.geoms.size[j],
+                                        carry.user_scene.geoms.pos[j],
+                                        carry.user_scene.geoms.mat[j],
+                                        carry.user_scene.geoms.rgba[j])
+                    # set dataid to be able to identify the geom in the user scene
+                    self._scene.geoms[carry_visual_start_idx + j].dataid = int(carry.user_scene.geoms.dataid[j]*2)
+                    self._scene.geoms[carry_visual_start_idx + j].category =  mujoco.mjtCatBit.mjCAT_DECOR
 
-                self._scene.ngeom += 1
+                    self._scene.ngeom += 1
 
             self._add_user_scene_geoms()
 
@@ -553,24 +555,25 @@ class MujocoViewer:
                                         mujoco.mjtCatBit.mjCAT_DYNAMIC, self._scene)
 
                 # add visual geoms
-                carry_visual_start_idx = self._scene.ngeom
-                for j in range(n_visual_geoms):
-                    if self._scene.ngeom > self._scene.maxgeom:
-                        raise RuntimeError(
-                            'Ran out of geoms. maxgeom: %d' %
-                            self._scene.ngeom.maxgeom)
-                    mujoco.mjv_initGeom(self._scene.geoms[carry_visual_start_idx + j],
-                                        visual_geoms_type[i, j],
-                                        visual_geoms_size[i, j],
-                                        visual_geoms_pos[i, j],
-                                        visual_geoms_mat[i, j],
-                                        visual_geoms_rgba[i, j])
+                if self._show_visual_geoms:
+                    carry_visual_start_idx = self._scene.ngeom
+                    for j in range(n_visual_geoms):
+                        if self._scene.ngeom > self._scene.maxgeom:
+                            raise RuntimeError(
+                                'Ran out of geoms. maxgeom: %d' %
+                                self._scene.ngeom.maxgeom)
+                        mujoco.mjv_initGeom(self._scene.geoms[carry_visual_start_idx + j],
+                                            visual_geoms_type[i, j],
+                                            visual_geoms_size[i, j],
+                                            visual_geoms_pos[i, j],
+                                            visual_geoms_mat[i, j],
+                                            visual_geoms_rgba[i, j])
 
-                    # set dataid to be able to identify the geom in the user scene
-                    self._scene.geoms[carry_visual_start_idx + j].dataid = int(visual_geoms_dataid[i, j] * 2)
-                    self._scene.geoms[carry_visual_start_idx + j].category = mujoco.mjtCatBit.mjCAT_DECOR
+                        # set dataid to be able to identify the geom in the user scene
+                        self._scene.geoms[carry_visual_start_idx + j].dataid = int(visual_geoms_dataid[i, j] * 2)
+                        self._scene.geoms[carry_visual_start_idx + j].category = mujoco.mjtCatBit.mjCAT_DECOR
 
-                    self._scene.ngeom += 1
+                        self._scene.ngeom += 1
 
             self._add_user_scene_geoms()
 
@@ -766,6 +769,11 @@ class MujocoViewer:
                 self._camera.type = mujoco.mjtCamera.mjCAMERA_FREE
                 self._camera.trackbodyid = -1
                 self._set_camera_properties(self._camera_mode_target)
+        elif self._camera_mode_target == "ego_head":
+            if self._camera_mode != "ego_head":
+                self._camera_mode = "ego_head"
+                self._camera.fixedcamid = mujoco.mj_name2id(self._model, mujoco.mjtObj.mjOBJ_CAMERA, "egocentric_cam")
+                self._camera.type = mujoco.mjtCamera.mjCAMERA_FIXED
 
     def _set_camera_properties(self, mode):
         """
