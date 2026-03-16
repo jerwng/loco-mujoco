@@ -1,0 +1,17 @@
+<mujoco>
+<body>
+  <!-- legs -->
+  <geom type="box" pos="-0.50  0.26 0.04" size="0.03 0.03 0.04" material="mat_wood"/>
+  <geom type="box" pos=" 0.50  0.26 0.04" size="0.03 0.03 0.04" material="mat_wood"/>
+  <geom type="box" pos="-0.50 -0.26 0.04" size="0.03 0.03 0.04" material="mat_wood"/>
+  <geom type="box" pos=" 0.50 -0.26 0.04" size="0.03 0.03 0.04" material="mat_wood"/>
+  <!-- seat cushion: top at z=0.27, matching chair seat -->
+  <geom type="box" pos="0 0 0.17" size="0.54 0.28 0.09" material="mat_fabric"/>
+  <!-- backrest: from z=0.26 to z=0.55 -->
+  <geom type="box" pos="0 -0.23 0.40" size="0.54 0.05 0.15" material="mat_fabric"/>
+  <!-- left armrest -->
+  <geom type="box" pos="-0.49 -0.02 0.34" size="0.05 0.27 0.17" material="mat_fabric"/>
+  <!-- right armrest -->
+  <geom type="box" pos=" 0.49 -0.02 0.34" size="0.05 0.27 0.17" material="mat_fabric"/>
+</body>
+</mujoco>

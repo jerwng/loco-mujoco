@@ -1,10 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
 <mujoco model="go2">
 
-  <include file="../common/scene.xml" />
+  <!-- <include file="../common/scene.xml" /> -->
+  <include file="./room/scene_room.xml" />
   <include file="../common/mimic_sites.xml" />
 
-  <statistic center="0 0 0.5" extent="10" />
+  <statistic center="0 0 0.5" extent="10"/>
 
   <visual>
     <rgba haze="0 0 0 0" />
@@ -74,12 +75,12 @@
 
   <worldbody>
 
-    <body name="red_disk_marker" pos="8.0 -5.0 0.485" quat="0.7071 0 0.7071 0">
+    <!-- <body name="red_disk_marker" pos="2.0 0.0 0.485" quat="0.7071 0 0.7071 0">
       <geom name="red_target" type="sphere" size="0.242" material="mat_red_emissive" contype="0" conaffinity="0" />
-    </body>
+    </body> -->
 
     <body name="base" pos="0 0 0.445" childclass="go2">
-      <camera name="egocentric_cam" pos="0.33 0 0.04" euler="1.5708 -1.5708 0" fovy="90" />
+      <camera name="egocentric_cam" pos="0.32 0 0.04" euler="1.5708 -1.5708 0" fovy="90" />
       <light name="spotlight" mode="trackcom" pos="0 -2 50" dir="0 0 -1" />
       <inertial pos="0.021112 0 -0.005366" quat="-0.000543471 0.713435 -0.00173769 0.700719" mass="6.921" diaginertia="0.107027 0.0980771 0.0244531" />
       <freejoint name="root" />
