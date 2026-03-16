@@ -196,16 +196,20 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
             else:
                 obs, reward, absorbing, done, info, env_state = env.step(env_state, action)
             
-            # Get current heading
+            # Get current heading and velocity
             if use_mujoco:
                 current_qpos = env.data.qpos
+                current_qvel = env.data.qvel
             else:
                 current_qpos = env_state.data.qpos[0] if len(env_state.data.qpos.shape) > 1 else env_state.data.qpos
+                current_qvel = env_state.data.qvel[0] if len(env_state.data.qvel.shape) > 1 else env_state.data.qvel
 
             current_quat = current_qpos[3:7]
             current_heading = quat_to_heading(current_quat)
+            vel_x = float(current_qvel[0])
+            vel_y = float(current_qvel[1])
             
-            print(f"[Step {step_count}] Current heading: {current_heading:.3f} rad ({np.degrees(current_heading):.1f}°)")
+            print(f"[Step {step_count}] vel_x: {vel_x:.3f}, vel_y: {vel_y:.3f}, heading: {current_heading:.3f} rad ({np.degrees(current_heading):.1f}°)")
             if use_mujoco:
                 obs[-3:] = goal_values
             else:
