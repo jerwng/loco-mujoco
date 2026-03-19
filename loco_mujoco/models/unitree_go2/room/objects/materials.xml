@@ -1,9 +1,24 @@
 <mujoco>
   <material name="mat_wall" rgba="0.85 0.85 0.85 1"/>
-  <material name="mat_wood" rgba="0.55 0.35 0.20 1"/>
-  <material name="mat_fabric" rgba="0.35 0.45 0.60 1"/>
-  <material name="mat_cardboard" rgba="0.76 0.60 0.35 1"/>
-  <material name="mat_metal" rgba="0.55 0.55 0.58 1" reflectance="0.3"/>
+  <texture name="tex_wood_chair" type="2d" file="wood1.png"/>
+  <material name="mat_wood_chair" texture="tex_wood_chair" texrepeat="2 2"/>
+
+  <texture name="tex_wood_table" type="2d" file="wood2.png"/>
+  <material name="mat_wood_table" texture="tex_wood_table" texrepeat="2 2"/>
+
+  <texture name="tex_wood_bookshelf" type="2d" file="wood3.png"/>
+  <material name="mat_wood_bookshelf" texture="tex_wood_bookshelf" texrepeat="2 2"/>
+
+  <texture name="tex_wood_couch" type="2d" file="wood4.png"/>
+  <material name="mat_wood_couch" texture="tex_wood_couch" texrepeat="2 2"/>
+  <texture name="tex_fabric" type="2d" file="cloth.png"/>
+  <material name="mat_fabric" texture="tex_fabric" texrepeat="2 2"/>
+
+  <texture name="tex_cardboard" type="2d" file="cardboard.png"/>
+  <material name="mat_cardboard" texture="tex_cardboard" texrepeat="2 2"/>
+
+  <texture name="tex_metal" type="2d" file="metal.png"/>
+  <material name="mat_metal" texture="tex_metal" texrepeat="2 2" reflectance="0.3"/>
 
   <texture name="tex_floor" type="2d" builtin="checker" width="512" height="512"
            rgb1="0.55 0.55 0.55" rgb2="0.50 0.50 0.50"/>

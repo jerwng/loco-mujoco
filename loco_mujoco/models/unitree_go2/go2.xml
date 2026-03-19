@@ -2,7 +2,8 @@
 <mujoco model="go2">
 
   <!-- <include file="../common/scene.xml" /> -->
-  <include file="./room/scene_room.xml" />
+  <!-- <include file="./room/scene_room.xml" /> -->
+  <include file="./scenarios/C02/scene_room.xml" />
   <include file="../common/mimic_sites.xml" />
 
   <statistic center="0 0 0.5" extent="10"/>
