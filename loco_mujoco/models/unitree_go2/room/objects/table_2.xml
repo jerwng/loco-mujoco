@@ -1,0 +1,9 @@
+<mujoco>
+  <body>
+    <geom type="box" pos="0 0 0.40" size="0.6 0.4 0.03" material="mat_wood_table"/>
+    <geom type="box" pos="0.50  0.30 0.20" size="0.03 0.03 0.20" material="mat_wood_table"/>
+    <geom type="box" pos="0.50 -0.30 0.20" size="0.03 0.03 0.20" material="mat_wood_table"/>
+    <geom type="box" pos="-0.50 0.30 0.20" size="0.03 0.03 0.20" material="mat_wood_table"/>
+    <geom type="box" pos="-0.50 -0.30 0.20" size="0.03 0.03 0.20" material="mat_wood_table"/>
+  </body>
+</mujoco>
