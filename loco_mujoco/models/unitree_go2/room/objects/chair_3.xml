@@ -1,13 +1,13 @@
 <mujoco>
   <body>
     <!-- seat -->
-    <geom type="box" pos="0 0 0.25" size="0.25 0.25 0.02" material="mat_wood_chair"/>
+    <geom name="chair3_seat" type="box" pos="0 0 0.25" size="0.25 0.25 0.02" material="mat_wood_chair"/>
     <!-- backrest -->
-    <geom type="box" pos="0 -0.22 0.55" size="0.25 0.03 0.30" material="mat_wood_chair"/>
+    <geom name="chair3_back" type="box" pos="0 -0.22 0.55" size="0.25 0.03 0.30" material="mat_wood_chair"/>
     <!-- legs -->
-    <geom type="box" pos=" 0.21  0.21 0.115" size="0.02 0.02 0.115" material="mat_wood_chair"/>
-    <geom type="box" pos="-0.21  0.21 0.115" size="0.02 0.02 0.115" material="mat_wood_chair"/>
-    <geom type="box" pos=" 0.21 -0.21 0.115" size="0.02 0.02 0.115" material="mat_wood_chair"/>
-    <geom type="box" pos="-0.21 -0.21 0.115" size="0.02 0.02 0.115" material="mat_wood_chair"/>
+    <geom name="chair3_leg_fl" type="box" pos=" 0.21  0.21 0.115" size="0.02 0.02 0.115" material="mat_wood_chair"/>
+    <geom name="chair3_leg_fr" type="box" pos="-0.21  0.21 0.115" size="0.02 0.02 0.115" material="mat_wood_chair"/>
+    <geom name="chair3_leg_bl" type="box" pos=" 0.21 -0.21 0.115" size="0.02 0.02 0.115" material="mat_wood_chair"/>
+    <geom name="chair3_leg_br" type="box" pos="-0.21 -0.21 0.115" size="0.02 0.02 0.115" material="mat_wood_chair"/>
   </body>
 </mujoco>

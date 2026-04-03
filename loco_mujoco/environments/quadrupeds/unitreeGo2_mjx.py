@@ -24,7 +24,8 @@ class MjxUnitreeGo2(UnitreeGo2):
         some changes to the XML:
             1. Replace the complex foot meshes with primitive shapes. Here, one foot mesh is replaced with
                two capsules.
-            2. Disable all contacts except the ones between feet and the floor.
+            2. Disable all contacts except: (a) feet and the floor, (b) the robot front geoms and named
+               room object geoms.
 
         Args:
             spec (MjSpec): Mujoco specification.
@@ -44,5 +45,18 @@ class MjxUnitreeGo2(UnitreeGo2):
         spec.add_pair(geomname1="floor", geomname2="RR_foot")
         spec.add_pair(geomname1="floor", geomname2="FL_foot")
         spec.add_pair(geomname1="floor", geomname2="FR_foot")
+
+        # --- 3. Add front-to-room-object contact pairs ---
+        # Exclude robot geoms (legs, front geoms themselves used as geomname1) and the floor.
+        # Keep only the front sphere here because MJX does not implement cylinder-box contacts.
+        robot_geom_names = {"front_cylinder", "front_sphere",
+                    "FL_foot", "FR_foot", "RL_foot", "RR_foot"}
+        skip_geom_names = {"floor"}
+        front_geom_names = ["front_sphere"]
+
+        for g in spec.geoms:
+            if g.name and g.name not in robot_geom_names and g.name not in skip_geom_names:
+                for front_name in front_geom_names:
+                    spec.add_pair(geomname1=front_name, geomname2=g.name)
 
         return spec

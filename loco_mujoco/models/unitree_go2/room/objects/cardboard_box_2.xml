@@ -1,9 +1,9 @@
 <mujoco>
   <body>
-    <geom type="box" pos="0 0 0.015" size="0.20 0.20 0.015" material="mat_cardboard"/>
-    <geom type="box" pos="0  0.185 0.155" size="0.20 0.015 0.125" material="mat_cardboard"/>
-    <geom type="box" pos="0 -0.185 0.155" size="0.20 0.015 0.125" material="mat_cardboard"/>
-    <geom type="box" pos="-0.185 0 0.155" size="0.015 0.20 0.125" material="mat_cardboard"/>
-    <geom type="box" pos=" 0.185 0 0.155" size="0.015 0.20 0.125" material="mat_cardboard"/>
+    <geom name="cbox2_bottom" type="box" pos="0 0 0.015" size="0.20 0.20 0.015" material="mat_cardboard"/>
+    <geom name="cbox2_front" type="box" pos="0  0.185 0.155" size="0.20 0.015 0.125" material="mat_cardboard"/>
+    <geom name="cbox2_back" type="box" pos="0 -0.185 0.155" size="0.20 0.015 0.125" material="mat_cardboard"/>
+    <geom name="cbox2_left" type="box" pos="-0.185 0 0.155" size="0.015 0.20 0.125" material="mat_cardboard"/>
+    <geom name="cbox2_right" type="box" pos=" 0.185 0 0.155" size="0.015 0.20 0.125" material="mat_cardboard"/>
   </body>
 </mujoco>
