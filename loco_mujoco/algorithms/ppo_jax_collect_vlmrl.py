@@ -2,7 +2,125 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import warnings
+import mujoco as _mujoco
 from .ppo_jax_collect import PPOJaxCollect
+
+# Geom names that represent normal foot-floor walking contacts (not obstacle collisions)
+_FOOT_GEOM_NAMES = frozenset({'FL_foot', 'FR_foot', 'RL_foot', 'RR_foot'})
+_FLOOR_GEOM_NAMES = frozenset({'floor'})
+
+
+def _get_allowed_geom_ids(model):
+    """Return set of geom IDs for foot and floor geoms (normal walking contacts)."""
+    ids = set()
+    for name in _FOOT_GEOM_NAMES | _FLOOR_GEOM_NAMES:
+        gid = _mujoco.mj_name2id(model, _mujoco.mjtObj.mjOBJ_GEOM, name)
+        if gid >= 0:
+            ids.add(gid)
+    return ids
+
+
+def _check_obstacle_collision_mujoco(model, data, allowed_geom_ids):
+    """Return (collided, g1_name, g2_name) if a non-foot-floor contact exists."""
+    for i in range(data.ncon):
+        g1 = int(data.contact[i].geom1)
+        g2 = int(data.contact[i].geom2)
+        if not (g1 in allowed_geom_ids and g2 in allowed_geom_ids):
+            return True, model.geom(g1).name, model.geom(g2).name
+    return False, None, None
+
+
+def _check_obstacle_collision_mjx(model, env_state, allowed_geom_ids):
+    """Return (collided, g1_name, g2_name) for non-foot-floor contact in MjX."""
+    try:
+        contact_geom = env_state.data.contact.geom
+        contact_dist = env_state.data.contact.dist
+        # Handle batched shape (n_envs, max_contacts, 2)
+        if len(contact_geom.shape) == 3:
+            geom_arr = np.array(contact_geom[0])
+            dist_arr = np.array(contact_dist[0])
+        else:
+            geom_arr = np.array(contact_geom)
+            dist_arr = np.array(contact_dist)
+        for i in range(len(dist_arr)):
+            if float(dist_arr[i]) >= 0:  # inactive contact slot
+                continue
+            g1 = int(geom_arr[i, 0])
+            g2 = int(geom_arr[i, 1])
+            if not (g1 in allowed_geom_ids and g2 in allowed_geom_ids):
+                return True, model.geom(g1).name, model.geom(g2).name
+    except Exception:
+        pass
+    return False, None, None
+
+
+def _get_target_body_id(model, target_body_name):
+    """Return body ID for target_body_name, or -1 if not found."""
+    return _mujoco.mj_name2id(model, _mujoco.mjtObj.mjOBJ_BODY, target_body_name)
+
+
+def _get_target_xy(data, body_id, env_state, use_mujoco):
+    """Return [x, y] world position of target body, or None if body_id < 0."""
+    if body_id < 0:
+        return None
+    try:
+        if use_mujoco:
+            return np.array(data.xpos[body_id, :2])
+        else:
+            xpos = env_state.data.xpos
+            if len(xpos.shape) == 3:  # (n_envs, nbody, 3)
+                return np.array(xpos[0, body_id, :2])
+            else:
+                return np.array(xpos[body_id, :2])
+    except Exception:
+        return None
+
+
+def _print_episode_result(
+    step_count, planar_speed, current_qpos, env, env_state,
+    target_body_id, target_body_name,
+    collision_occurred, collision_geoms,
+    success_velocity_threshold, success_distance_threshold,
+    use_mujoco,
+):
+    """Print episode success/failure evaluation."""
+    robot_xy = np.array([float(current_qpos[0]), float(current_qpos[1])])
+    if use_mujoco:
+        target_xy = _get_target_xy(env.data, target_body_id, None, True)
+    else:
+        target_xy = _get_target_xy(None, target_body_id, env_state, False)
+
+    dist = float(np.linalg.norm(robot_xy - target_xy)) if target_xy is not None else None
+
+    if collision_occurred:
+        outcome = "FAILURE"
+        reason = f"Collided with obstacle ({collision_geoms[0]} <-> {collision_geoms[1]})"
+    elif planar_speed < success_velocity_threshold and (dist is None or dist < success_distance_threshold):
+        outcome = "SUCCESS"
+        if dist is not None:
+            reason = f"Reached target (speed={planar_speed:.3f} m/s, dist={dist:.3f} m)"
+        else:
+            reason = f"Low velocity stop (speed={planar_speed:.3f} m/s, target '{target_body_name}' not in model)"
+    else:
+        outcome = "TIMEOUT"
+        parts = [f"speed={planar_speed:.3f} m/s (threshold={success_velocity_threshold})"]
+        if dist is not None:
+            parts.append(f"dist={dist:.3f} m (threshold={success_distance_threshold} m)")
+        reason = ", ".join(parts)
+
+    print("\n" + "=" * 60)
+    print("EPISODE EVALUATION")
+    print("=" * 60)
+    print(f"Outcome : {outcome}")
+    print(f"Reason  : {reason}")
+    print(f"Steps   : {step_count}")
+    print(f"Speed   : {planar_speed:.3f} m/s  (threshold: {success_velocity_threshold} m/s)")
+    if dist is not None:
+        print(f"Distance: {dist:.3f} m  (threshold: {success_distance_threshold} m, target: '{target_body_name}')")
+    else:
+        print(f"Distance: N/A  (target body '{target_body_name}' not found in model)")
+    print(f"Collision detected: {'YES — ' + collision_geoms[0] + ' <-> ' + collision_geoms[1] if collision_occurred else 'No'}")
+    print("=" * 60)
 
 class PPOJaxCollectVLMRL(PPOJaxCollect):
     """
@@ -19,7 +137,12 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
                     use_mujoco=False, wrap_env=True,
                     train_state_seed=None, slice_obs=None,
                     custom_goal=None, vlm_predictor=None,
-                    vlm_update_frequency=1, vlm_prompt=None):
+                    vlm_update_frequency=1, vlm_prompt=None,
+                    low_velocity_threshold=None,
+                    low_velocity_window=50,
+                    target_body_name="red_disk_marker",
+                    success_distance_threshold=1.0,
+                    success_velocity_threshold=0.1):
         """
         Play policy with optional custom goal override or VLM-based goal prediction.
         
@@ -117,8 +240,11 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
             else:
                 initial_frame = env.mjx_render(env_state, record=record)
             
-            # Get initial VLM prediction
-            vlm_goal = vlm_predictor.predict_goal(initial_frame, prompt=vlm_prompt, current_heading=heading)
+            # Get initial VLM prediction (robot is stationary at episode start)
+            vlm_goal = vlm_predictor.predict_goal(
+                initial_frame, prompt=vlm_prompt, current_heading=heading,
+                velocity_toward_target_mps=0.0,
+            )
             goal_values = np.array([
                 vlm_goal.get('vel_x', 1.0),
                 vlm_goal.get('vel_y', 0.0),
@@ -146,8 +272,23 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
             # For batched observations (n_envs, obs_dim)
             obs = obs.at[:, -3:].set(goal_values)
 
+        # Episode evaluation setup
+        raw_model = env.model
+        allowed_geom_ids = _get_allowed_geom_ids(raw_model)
+        target_body_id = _get_target_body_id(raw_model, target_body_name)
+        if target_body_id < 0:
+            print(f"[EvalChecker] Target body '{target_body_name}' not found — distance check disabled.")
+        else:
+            print(f"[EvalChecker] Tracking target body '{target_body_name}' (ID={target_body_id}).")
+        collision_occurred = False
+        collision_geoms = (None, None)
+        # Sentinel values used if the loop never executes
+        planar_speed = 0.0
+        current_qpos = qpos
+
         done = False
         step_count = 0
+        recent_speeds = []
 
         print("-" * 50)
 
@@ -170,8 +311,16 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
                     current_qpos = env_state.data.qpos[0] if len(env_state.data.qpos.shape) > 1 else env_state.data.qpos
                 current_quat = current_qpos[3:7]
                 current_heading = quat_to_heading(current_quat)
-                
-                vlm_goal = vlm_predictor.predict_goal(frame, prompt=vlm_prompt, current_heading=current_heading)
+                if use_mujoco:
+                    _vlm_qvel = env.data.qvel
+                else:
+                    _vlm_qvel = env_state.data.qvel[0] if len(env_state.data.qvel.shape) > 1 else env_state.data.qvel
+                vlm_planar_speed = float(np.linalg.norm(_vlm_qvel[:2]))
+
+                vlm_goal = vlm_predictor.predict_goal(
+                    frame, prompt=vlm_prompt, current_heading=current_heading,
+                    velocity_toward_target_mps=vlm_planar_speed,
+                )
                 goal_values = np.array([
                     vlm_goal.get('vel_x', 1.0),
                     vlm_goal.get('vel_y', 0.0),
@@ -208,14 +357,40 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
             current_heading = quat_to_heading(current_quat)
             vel_x = float(current_qvel[0])
             vel_y = float(current_qvel[1])
+            planar_speed = float(np.linalg.norm(current_qvel[:2]))
             
-            print(f"[Step {step_count}] vel_x: {vel_x:.3f}, vel_y: {vel_y:.3f}, heading: {current_heading:.3f} rad ({np.degrees(current_heading):.1f}°)")
+            print(f"[Step {step_count}] vel_x: {vel_x:.3f}, vel_y: {vel_y:.3f}, speed: {planar_speed:.3f}, heading: {current_heading:.3f} rad ({np.degrees(current_heading):.1f}°)")
             if use_mujoco:
                 obs[-3:] = goal_values
             else:
                 obs = obs.at[:, -3:].set(goal_values)
 
             step_count += 1
+
+            # Check for obstacle collision (only update flag, never clear it)
+            if not collision_occurred:
+                if use_mujoco:
+                    coll, g1, g2 = _check_obstacle_collision_mujoco(raw_model, env.data, allowed_geom_ids)
+                else:
+                    coll, g1, g2 = _check_obstacle_collision_mjx(raw_model, env_state, allowed_geom_ids)
+                if coll:
+                    collision_occurred = True
+                    collision_geoms = (g1, g2)
+                    print(f"[EvalChecker] Collision at step {step_count}: {g1} <-> {g2}")
+
+            if low_velocity_threshold is not None and low_velocity_window > 0:
+                recent_speeds.append(planar_speed)
+                if len(recent_speeds) > low_velocity_window:
+                    recent_speeds.pop(0)
+
+                if len(recent_speeds) == low_velocity_window:
+                    avg_speed = float(np.mean(recent_speeds))
+                    if avg_speed < low_velocity_threshold:
+                        print(
+                            f"Average planar speed over the last {low_velocity_window} steps "
+                            f"fell below {low_velocity_threshold:.3f} ({avg_speed:.3f}). Terminating."
+                        )
+                        done = True
             
             # RESET MUJOCO ENV (MJX resets by itself)
             if done:
@@ -225,8 +400,23 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
             print()
 
         env.stop()
-        
+
         print(f"Episode completed: {step_count} steps")
+
+        _print_episode_result(
+            step_count=step_count,
+            planar_speed=planar_speed,
+            current_qpos=current_qpos,
+            env=env,
+            env_state=env_state,
+            target_body_id=target_body_id,
+            target_body_name=target_body_name,
+            collision_occurred=collision_occurred,
+            collision_geoms=collision_geoms,
+            success_velocity_threshold=success_velocity_threshold,
+            success_distance_threshold=success_distance_threshold,
+            use_mujoco=use_mujoco,
+        )
 
     @classmethod
     def play_policy_mujoco(cls, env,
@@ -236,8 +426,15 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
                            record=False, rng=None, deterministic=False,
                            train_state_seed=None, slice_obs=None,
                            custom_goal=None, vlm_predictor=None,
-                           vlm_update_frequency=1, vlm_prompt=None):
+                           vlm_update_frequency=1, vlm_prompt=None,
+                           low_velocity_threshold=None,
+                           low_velocity_window=50,
+                           target_body_name="red_disk_marker",
+                           success_distance_threshold=1.0,
+                           success_velocity_threshold=0.1):
 
         return cls.play_policy(env, agent_conf, agent_state, 1, n_steps, render, record, rng, deterministic,
                         True, False, train_state_seed, slice_obs, custom_goal, vlm_predictor,
-                        vlm_update_frequency, vlm_prompt)
+                        vlm_update_frequency, vlm_prompt,
+                        low_velocity_threshold, low_velocity_window,
+                        target_body_name, success_distance_threshold, success_velocity_threshold)
