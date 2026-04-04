@@ -243,7 +243,6 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
             # Get initial VLM prediction (robot is stationary at episode start)
             vlm_goal = vlm_predictor.predict_goal(
                 initial_frame, prompt=vlm_prompt, current_heading=heading,
-                velocity_toward_target_mps=0.0,
             )
             goal_values = np.array([
                 vlm_goal.get('vel_x', 1.0),
@@ -311,15 +310,8 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
                     current_qpos = env_state.data.qpos[0] if len(env_state.data.qpos.shape) > 1 else env_state.data.qpos
                 current_quat = current_qpos[3:7]
                 current_heading = quat_to_heading(current_quat)
-                if use_mujoco:
-                    _vlm_qvel = env.data.qvel
-                else:
-                    _vlm_qvel = env_state.data.qvel[0] if len(env_state.data.qvel.shape) > 1 else env_state.data.qvel
-                vlm_planar_speed = float(np.linalg.norm(_vlm_qvel[:2]))
-
                 vlm_goal = vlm_predictor.predict_goal(
                     frame, prompt=vlm_prompt, current_heading=current_heading,
-                    velocity_toward_target_mps=vlm_planar_speed,
                 )
                 goal_values = np.array([
                     vlm_goal.get('vel_x', 1.0),
