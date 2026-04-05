@@ -20,18 +20,42 @@ def _get_allowed_geom_ids(model):
     return ids
 
 
-def _check_obstacle_collision_mujoco(model, data, allowed_geom_ids):
-    """Return (collided, g1_name, g2_name) if a non-foot-floor contact exists."""
+def _get_target_geom_ids(model, target_body_id):
+    """Return set of geom IDs belonging to target_body_id, or empty set if invalid."""
+    if target_body_id < 0:
+        return set()
+    try:
+        start = int(model.body_geomadr[target_body_id])
+        count = int(model.body_geomnum[target_body_id])
+        return set(range(start, start + count))
+    except Exception:
+        return set()
+
+
+def _classify_collision_mujoco(model, data, allowed_geom_ids, target_geom_ids):
+    """Classify the first significant contact.
+
+    Returns (collision_type, g1_name, g2_name) where collision_type is
+    'obstacle', 'target', or None (no significant contact).
+    """
     for i in range(data.ncon):
         g1 = int(data.contact[i].geom1)
         g2 = int(data.contact[i].geom2)
-        if not (g1 in allowed_geom_ids and g2 in allowed_geom_ids):
-            return True, model.geom(g1).name, model.geom(g2).name
-    return False, None, None
+        if g1 in allowed_geom_ids and g2 in allowed_geom_ids:
+            continue  # normal foot-floor contact
+        name1, name2 = model.geom(g1).name, model.geom(g2).name
+        if g1 in target_geom_ids or g2 in target_geom_ids:
+            return "target", name1, name2
+        return "obstacle", name1, name2
+    return None, None, None
 
 
-def _check_obstacle_collision_mjx(model, env_state, allowed_geom_ids):
-    """Return (collided, g1_name, g2_name) for non-foot-floor contact in MjX."""
+def _classify_collision_mjx(model, env_state, allowed_geom_ids, target_geom_ids):
+    """Classify the first significant contact in MjX.
+
+    Returns (collision_type, g1_name, g2_name) where collision_type is
+    'obstacle', 'target', or None.
+    """
     try:
         contact_geom = env_state.data.contact.geom
         contact_dist = env_state.data.contact.dist
@@ -47,11 +71,15 @@ def _check_obstacle_collision_mjx(model, env_state, allowed_geom_ids):
                 continue
             g1 = int(geom_arr[i, 0])
             g2 = int(geom_arr[i, 1])
-            if not (g1 in allowed_geom_ids and g2 in allowed_geom_ids):
-                return True, model.geom(g1).name, model.geom(g2).name
+            if g1 in allowed_geom_ids and g2 in allowed_geom_ids:
+                continue
+            name1, name2 = model.geom(g1).name, model.geom(g2).name
+            if g1 in target_geom_ids or g2 in target_geom_ids:
+                return "target", name1, name2
+            return "obstacle", name1, name2
     except Exception:
         pass
-    return False, None, None
+    return None, None, None
 
 
 def _get_target_body_id(model, target_body_name):
@@ -79,11 +107,17 @@ def _get_target_xy(data, body_id, env_state, use_mujoco):
 def _print_episode_result(
     step_count, planar_speed, current_qpos, env, env_state,
     target_body_id, target_body_name,
-    collision_occurred, collision_geoms,
-    success_velocity_threshold, success_distance_threshold,
+    obstacle_collision_occurred, obstacle_collision_geoms,
+    target_collision_occurred, target_collision_geoms,
     use_mujoco,
+    success_distance_threshold,
 ):
-    """Print episode success/failure evaluation."""
+    """Print episode evaluation using the following criteria:
+
+    Full success  — no obstacle collision, no target collision, dist ≤ threshold.
+    Partial       — no obstacle collision + (target collision OR threshold < dist ≤ 5 m).
+    Failure       — obstacle collision OR dist > 5 m.
+    """
     robot_xy = np.array([float(current_qpos[0]), float(current_qpos[1])])
     if use_mujoco:
         target_xy = _get_target_xy(env.data, target_body_id, None, True)
@@ -92,35 +126,55 @@ def _print_episode_result(
 
     dist = float(np.linalg.norm(robot_xy - target_xy)) if target_xy is not None else None
 
-    if collision_occurred:
+    if obstacle_collision_occurred:
         outcome = "FAILURE"
-        reason = f"Collided with obstacle ({collision_geoms[0]} <-> {collision_geoms[1]})"
-    elif planar_speed < success_velocity_threshold and (dist is None or dist < success_distance_threshold):
+        reason = f"Obstacle collision ({obstacle_collision_geoms[0]} <-> {obstacle_collision_geoms[1]})"
+    elif target_collision_occurred:
+        outcome = "PARTIAL"
+        reason = f"Target collision ({target_collision_geoms[0]} <-> {target_collision_geoms[1]})"
+    elif dist is None:
+        outcome = "FAILURE"
+        reason = f"Target body '{target_body_name}' not found in model"
+    elif dist <= success_distance_threshold:
         outcome = "SUCCESS"
-        if dist is not None:
-            reason = f"Reached target (speed={planar_speed:.3f} m/s, dist={dist:.3f} m)"
-        else:
-            reason = f"Low velocity stop (speed={planar_speed:.3f} m/s, target '{target_body_name}' not in model)"
+        reason = f"Reached target (dist={dist:.3f} m)"
+    elif dist <= 5.0:
+        outcome = "PARTIAL"
+        reason = f"Near target (dist={dist:.3f} m, {success_distance_threshold:g} m < dist ≤ 5 m)"
     else:
-        outcome = "TIMEOUT"
-        parts = [f"speed={planar_speed:.3f} m/s (threshold={success_velocity_threshold})"]
-        if dist is not None:
-            parts.append(f"dist={dist:.3f} m (threshold={success_distance_threshold} m)")
-        reason = ", ".join(parts)
+        outcome = "FAILURE"
+        reason = f"Too far from target (dist={dist:.3f} m > 5 m)"
 
     print("\n" + "=" * 60)
     print("EPISODE EVALUATION")
     print("=" * 60)
-    print(f"Outcome : {outcome}")
-    print(f"Reason  : {reason}")
-    print(f"Steps   : {step_count}")
-    print(f"Speed   : {planar_speed:.3f} m/s  (threshold: {success_velocity_threshold} m/s)")
+    print(f"Outcome          : {outcome}")
+    print(f"Reason           : {reason}")
+    print(f"Steps            : {step_count}")
+    print(f"Speed            : {planar_speed:.3f} m/s")
     if dist is not None:
-        print(f"Distance: {dist:.3f} m  (threshold: {success_distance_threshold} m, target: '{target_body_name}')")
+        print(f"Distance         : {dist:.3f} m  (target: '{target_body_name}')")
     else:
-        print(f"Distance: N/A  (target body '{target_body_name}' not found in model)")
-    print(f"Collision detected: {'YES — ' + collision_geoms[0] + ' <-> ' + collision_geoms[1] if collision_occurred else 'No'}")
+        print(f"Distance         : N/A  (target body '{target_body_name}' not found)")
+    if obstacle_collision_occurred:
+        print(f"Obstacle collision: YES — {obstacle_collision_geoms[0]} <-> {obstacle_collision_geoms[1]}")
+    else:
+        print(f"Obstacle collision: No")
+    if target_collision_occurred:
+        print(f"Target collision  : YES — {target_collision_geoms[0]} <-> {target_collision_geoms[1]}")
+    else:
+        print(f"Target collision  : No")
     print("=" * 60)
+
+    return {
+        "outcome": outcome,
+        "reason": reason,
+        "steps": step_count,
+        "speed": round(planar_speed, 4),
+        "dist": round(dist, 4) if dist is not None else None,
+        "collision": obstacle_collision_occurred,
+        "target_collision": target_collision_occurred,
+    }
 
 class PPOJaxCollectVLMRL(PPOJaxCollect):
     """
@@ -141,7 +195,7 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
                     low_velocity_threshold=None,
                     low_velocity_window=50,
                     target_body_name="red_disk_marker",
-                    success_distance_threshold=1.0,
+                    success_distance_threshold=2.0,
                     success_velocity_threshold=0.1):
         """
         Play policy with optional custom goal override or VLM-based goal prediction.
@@ -275,12 +329,15 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
         raw_model = env.model
         allowed_geom_ids = _get_allowed_geom_ids(raw_model)
         target_body_id = _get_target_body_id(raw_model, target_body_name)
+        target_geom_ids = _get_target_geom_ids(raw_model, target_body_id)
         if target_body_id < 0:
             print(f"[EvalChecker] Target body '{target_body_name}' not found — distance check disabled.")
         else:
-            print(f"[EvalChecker] Tracking target body '{target_body_name}' (ID={target_body_id}).")
-        collision_occurred = False
-        collision_geoms = (None, None)
+            print(f"[EvalChecker] Tracking target body '{target_body_name}' (ID={target_body_id}, geoms={len(target_geom_ids)}).")
+        obstacle_collision_occurred = False
+        obstacle_collision_geoms = (None, None)
+        target_collision_occurred = False
+        target_collision_geoms = (None, None)
         # Sentinel values used if the loop never executes
         planar_speed = 0.0
         current_qpos = qpos
@@ -359,16 +416,20 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
 
             step_count += 1
 
-            # Check for obstacle collision (only update flag, never clear it)
-            if not collision_occurred:
+            # Classify contacts (obstacle vs target); flags never cleared once set
+            if not obstacle_collision_occurred:
                 if use_mujoco:
-                    coll, g1, g2 = _check_obstacle_collision_mujoco(raw_model, env.data, allowed_geom_ids)
+                    coll_type, g1, g2 = _classify_collision_mujoco(raw_model, env.data, allowed_geom_ids, target_geom_ids)
                 else:
-                    coll, g1, g2 = _check_obstacle_collision_mjx(raw_model, env_state, allowed_geom_ids)
-                if coll:
-                    collision_occurred = True
-                    collision_geoms = (g1, g2)
-                    print(f"[EvalChecker] Collision at step {step_count}: {g1} <-> {g2}")
+                    coll_type, g1, g2 = _classify_collision_mjx(raw_model, env_state, allowed_geom_ids, target_geom_ids)
+                if coll_type == "obstacle":
+                    obstacle_collision_occurred = True
+                    obstacle_collision_geoms = (g1, g2)
+                    print(f"[EvalChecker] Obstacle collision at step {step_count}: {g1} <-> {g2}")
+                elif coll_type == "target" and not target_collision_occurred:
+                    target_collision_occurred = True
+                    target_collision_geoms = (g1, g2)
+                    print(f"[EvalChecker] Target collision at step {step_count}: {g1} <-> {g2}")
 
             if low_velocity_threshold is not None and low_velocity_window > 0:
                 recent_speeds.append(planar_speed)
@@ -395,7 +456,7 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
 
         print(f"Episode completed: {step_count} steps")
 
-        _print_episode_result(
+        return _print_episode_result(
             step_count=step_count,
             planar_speed=planar_speed,
             current_qpos=current_qpos,
@@ -403,11 +464,12 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
             env_state=env_state,
             target_body_id=target_body_id,
             target_body_name=target_body_name,
-            collision_occurred=collision_occurred,
-            collision_geoms=collision_geoms,
-            success_velocity_threshold=success_velocity_threshold,
-            success_distance_threshold=success_distance_threshold,
+            obstacle_collision_occurred=obstacle_collision_occurred,
+            obstacle_collision_geoms=obstacle_collision_geoms,
+            target_collision_occurred=target_collision_occurred,
+            target_collision_geoms=target_collision_geoms,
             use_mujoco=use_mujoco,
+            success_distance_threshold=success_distance_threshold,
         )
 
     @classmethod
@@ -422,7 +484,7 @@ class PPOJaxCollectVLMRL(PPOJaxCollect):
                            low_velocity_threshold=None,
                            low_velocity_window=50,
                            target_body_name="red_disk_marker",
-                           success_distance_threshold=1.0,
+                           success_distance_threshold=2.0,
                            success_velocity_threshold=0.1):
 
         return cls.play_policy(env, agent_conf, agent_state, 1, n_steps, render, record, rng, deterministic,
