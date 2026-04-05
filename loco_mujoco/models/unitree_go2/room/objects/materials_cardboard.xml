@@ -1,0 +1,11 @@
+<mujoco>
+  <texture name="tex_cardboard" type="2d" file="cardboard.png"/>
+  <material name="mat_cardboard"
+            texture="tex_cardboard"
+            texrepeat="1.2 1.2"
+            texuniform="true"
+            rgba="1 1 1 1"
+            specular="0.10"
+            shininess="0.08"
+            reflectance="0.01"/>
+</mujoco>

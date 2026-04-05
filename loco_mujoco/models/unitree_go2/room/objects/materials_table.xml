@@ -1,0 +1,11 @@
+<mujoco>
+  <texture name="tex_wood_table" type="2d" file="wood_table_001_diff_2k.png"/>
+  <material name="mat_wood_table"
+            texture="tex_wood_table"
+            texrepeat="1.2 1.2"
+            texuniform="true"
+            rgba="1 1 1 1"
+            specular="0.22"
+            shininess="0.35"
+            reflectance="0.04"/>
+</mujoco>

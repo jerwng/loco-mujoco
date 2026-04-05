@@ -1,0 +1,21 @@
+<mujoco>
+  <texture name="tex_wood_couch" type="2d" file="wood_table_001_diff_2k.png"/>
+  <material name="mat_wood_couch"
+            texture="tex_wood_couch"
+            texrepeat="1.2 1.2"
+            texuniform="true"
+            rgba="1 1 1 1"
+            specular="0.22"
+            shininess="0.35"
+            reflectance="0.04"/>
+
+  <texture name="tex_fabric" type="2d" file="rough_linen_diff_2k.png"/>
+  <material name="mat_fabric"
+            texture="tex_fabric"
+            texrepeat="1.2 1.2"
+            texuniform="true"
+            rgba="1 1 1 1"
+            specular="0.10"
+            shininess="0.08"
+            reflectance="0.01"/>
+</mujoco>

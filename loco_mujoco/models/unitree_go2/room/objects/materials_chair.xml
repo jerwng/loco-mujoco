@@ -1,0 +1,11 @@
+<mujoco>
+  <texture name="tex_wood_chair" type="2d" file="oak_veneer_01_diff_2k.png"/>
+  <material name="mat_wood_chair"
+            texture="tex_wood_chair"
+            texrepeat="1.2 1.2"
+            texuniform="true"
+            rgba="1 1 1 1"
+            specular="0.22"
+            shininess="0.35"
+            reflectance="0.04"/>
+</mujoco>

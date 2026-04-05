@@ -1,0 +1,8 @@
+<mujoco>
+  <body>
+    <!-- main cylinder body -->
+    <geom name="trashcan_body" type="cylinder" pos="0 0 0.175" size="0.15 0.175" material="mat_metal"/>
+    <!-- rim ring (slightly wider) -->
+    <geom name="trashcan_rim" type="cylinder" pos="0 0 0.345" size="0.155 0.007" material="mat_metal"/>
+  </body>
+</mujoco>

@@ -1,8 +1,28 @@
 <mujoco>
   <body>
-    <!-- main cylinder body -->
-    <geom name="trashcan_body" type="cylinder" pos="0 0 0.175" size="0.15 0.175" material="mat_metal"/>
-    <!-- rim ring (slightly wider) -->
-    <geom name="trashcan_rim" type="cylinder" pos="0 0 0.345" size="0.155 0.007" material="mat_metal"/>
+    <!-- bottom foot ring -->
+    <geom name="trash_can_base_ring" type="cylinder"
+          pos="0 0 0.020" size="0.115 0.020"
+          material="mat_trash_can_dark_green"/>
+
+    <!-- main body -->
+    <geom name="trash_can_body" type="cylinder"
+          pos="0 0 0.155" size="0.138 0.135"
+          material="mat_trash_can_dark_green"/>
+
+    <!-- upper collar -->
+    <geom name="trash_can_upper_band" type="cylinder"
+          pos="0 0 0.265" size="0.152 0.016"
+          material="mat_trash_can_dark_green"/>
+
+    <!-- rolled top rim -->
+    <geom name="trash_can_rim" type="cylinder"
+          pos="0 0 0.292" size="0.168 0.010"
+          material="mat_trash_can_dark_green"/>
+
+    <!-- inset inner lip for a more finished opening -->
+    <geom name="trash_can_inner_lip" type="cylinder"
+          pos="0 0 0.276" size="0.126 0.008"
+          material="mat_trash_can_dark_green"/>
   </body>
 </mujoco>

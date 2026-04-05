@@ -1,20 +1,129 @@
 <mujoco>
-<body>
-  <!-- left side panel -->
-  <geom name="bookshelf_side_l" type="box" pos="-0.28 0 0.54" size="0.02 0.12 0.54" material="mat_wood_bookshelf"/>
-  <!-- right side panel -->
-  <geom name="bookshelf_side_r" type="box" pos=" 0.28 0 0.54" size="0.02 0.12 0.54" material="mat_wood_bookshelf"/>
-  <!-- back panel -->
-  <geom name="bookshelf_back" type="box" pos="0 0.10 0.54" size="0.30 0.02 0.54" material="mat_wood_bookshelf"/>
-  <!-- bottom shelf -->
-  <geom name="bookshelf_bottom" type="box" pos="0 0 0.02" size="0.28 0.12 0.02" material="mat_wood_bookshelf"/>
-  <!-- shelf 1 -->
-  <geom name="bookshelf_shelf1" type="box" pos="0 0 0.29" size="0.28 0.12 0.02" material="mat_wood_bookshelf"/>
-  <!-- shelf 2 -->
-  <geom name="bookshelf_shelf2" type="box" pos="0 0 0.56" size="0.28 0.12 0.02" material="mat_wood_bookshelf"/>
-  <!-- shelf 3 -->
-  <geom name="bookshelf_shelf3" type="box" pos="0 0 0.83" size="0.28 0.12 0.02" material="mat_wood_bookshelf"/>
-  <!-- top panel -->
-  <geom name="bookshelf_top" type="box" pos="0 0 1.06" size="0.30 0.12 0.02" material="mat_wood_bookshelf"/>
-</body>
+  <body name="bookshelf" pos="0 0 0">
+      <!-- Outer carcass -->
+      <geom name="bookshelf_left_panel" type="box"
+            pos="-0.285 0 0.54" size="0.025 0.12 0.54"
+            material="mat_wood_bookshelf"/>
+
+      <geom name="bookshelf_right_panel" type="box"
+            pos="0.285 0 0.54" size="0.025 0.12 0.54"
+            material="mat_wood_bookshelf"/>
+
+      <geom name="bookshelf_bottom_panel" type="box"
+            pos="0 0 0.035" size="0.285 0.12 0.035"
+            material="mat_wood_bookshelf"/>
+
+      <geom name="bookshelf_top_panel" type="box"
+            pos="0 0 1.045" size="0.285 0.12 0.035"
+            material="mat_wood_bookshelf"/>
+
+      <!-- invisible collision panels to keep objects inside the shelf -->
+      <geom name="bookshelf_front_collision" type="box"
+            pos="0 -0.130 0.54" size="0.270 0.012 0.50"
+            rgba="0 0 0 0"/>
+      <geom name="bookshelf_back_collision" type="box"
+            pos="0 0.130 0.54" size="0.270 0.012 0.50"
+            rgba="0 0 0 0"/>
+
+      <!-- interior shelves -->
+      <geom name="bookshelf_shelf_1" type="box"
+            pos="0 0.01 0.29" size="0.255 0.10 0.030"
+            material="mat_wood_bookshelf"/>
+      <geom name="book_s1_a" type="box"
+            pos="-0.18 0.00 0.355" size="0.022 0.070 0.065"
+            material="mat_book_red"/>
+      <geom name="book_s1_b" type="box"
+            pos="-0.12 0.00 0.345" size="0.018 0.070 0.055"
+            material="mat_book_blue"/>
+      <geom name="book_s1_c" type="box"
+            pos="-0.07 0.00 0.360" size="0.020 0.070 0.070"
+            material="mat_book_green"/>
+      <geom name="book_s1_d" type="box"
+            pos="0.02 0.00 0.350" size="0.024 0.070 0.060"
+            material="mat_book_yellow"/>
+      <geom name="book_s1_e" type="box"
+            pos="0.08 0.00 0.340" size="0.018 0.070 0.050"
+            material="mat_book_dark"/>
+      <geom name="book_s1_f" type="box"
+            pos="0.18 0.00 0.355" size="0.026 0.070 0.065"
+            material="mat_book_blue"/>
+
+      <geom name="bookshelf_shelf_2" type="box"
+            pos="0 0.01 0.56" size="0.255 0.10 0.030"
+            material="mat_wood_bookshelf"/>
+      <geom name="book_s2_a" type="box"
+            pos="-0.20 0.00 0.620" size="0.020 0.070 0.050"
+            material="mat_book_green"/>
+      <geom name="book_s2_b" type="box"
+            pos="-0.15 0.00 0.635" size="0.016 0.070 0.065"
+            material="mat_book_red"/>
+      <geom name="book_s2_c" type="box"
+            pos="-0.10 0.00 0.628" size="0.021 0.070 0.058"
+            material="mat_book_dark"/>
+      <geom name="book_s2_d" type="box"
+            pos="0.04 0.00 0.640" size="0.028 0.070 0.070"
+            material="mat_book_blue"/>
+      <geom name="book_s2_e" type="box"
+            pos="0.11 0.00 0.622" size="0.018 0.070 0.052"
+            material="mat_book_yellow"/>
+      <geom name="book_s2_f" type="box"
+            pos="0.17 0.00 0.632" size="0.022 0.070 0.062"
+            material="mat_book_red"/>
+
+      <geom name="bookshelf_shelf_3" type="box"
+            pos="0 0.01 0.83" size="0.255 0.10 0.030"
+            material="mat_wood_bookshelf"/>
+      <geom name="book_s3_a" type="box"
+            pos="-0.19 0.00 0.895" size="0.018 0.070 0.065"
+            material="mat_book_yellow"/>
+      <geom name="book_s3_b" type="box"
+            pos="-0.14 0.00 0.885" size="0.022 0.070 0.055"
+            material="mat_book_blue"/>
+      <geom name="book_s3_c" type="box"
+            pos="-0.08 0.00 0.900" size="0.020 0.070 0.070"
+            material="mat_book_green"/>
+      <geom name="book_s3_d" type="box"
+            pos="0.00 0.00 0.890" size="0.026 0.070 0.060"
+            material="mat_book_red"/>
+      <geom name="book_s3_e" type="box"
+            pos="0.10 0.00 0.882" size="0.018 0.070 0.052"
+            material="mat_book_dark"/>
+      <geom name="book_s3_f" type="box"
+            pos="0.17 0.00 0.892" size="0.024 0.070 0.062"
+            material="mat_book_green"/>
+
+      <!-- front face frame -->
+      <geom name="bookshelf_front_left_stile" type="box"
+            pos="-0.268 -0.108 0.54" size="0.012 0.010 0.54"
+            material="mat_wood_bookshelf"/>
+
+      <geom name="bookshelf_front_right_stile" type="box"
+            pos="0.268 -0.108 0.54" size="0.012 0.010 0.54"
+            material="mat_wood_bookshelf"/>
+
+      <geom name="bookshelf_front_top_rail" type="box"
+            pos="0 -0.108 1.03" size="0.255 0.010 0.012"
+            material="mat_wood_bookshelf"/>
+
+      <geom name="bookshelf_front_mid_rail_1" type="box"
+            pos="0 -0.108 0.81" size="0.255 0.010 0.010"
+            material="mat_wood_bookshelf"/>
+
+      <geom name="bookshelf_front_mid_rail_2" type="box"
+            pos="0 -0.108 0.54" size="0.255 0.010 0.010"
+            material="mat_wood_bookshelf"/>
+
+      <geom name="bookshelf_front_bottom_rail" type="box"
+            pos="0 -0.108 0.05" size="0.255 0.010 0.014"
+            material="mat_wood_bookshelf"/>
+
+      <!-- feet -->
+      <geom name="bookshelf_left_foot" type="box"
+            pos="-0.22 -0.06 0.008" size="0.04 0.04 0.008"
+            material="mat_wood_bookshelf"/>
+
+      <geom name="bookshelf_right_foot" type="box"
+            pos="0.22 -0.06 0.008" size="0.04 0.04 0.008"
+            material="mat_wood_bookshelf"/>
+  </body>
 </mujoco>

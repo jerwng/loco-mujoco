@@ -1,9 +1,75 @@
 <mujoco>
   <body>
-    <geom name="table_top" type="box" pos="0 0 0.40" size="0.6 0.4 0.03" material="mat_wood_table"/>
-    <geom name="table_leg_fl" type="box" pos="0.50  0.30 0.20" size="0.03 0.03 0.20" material="mat_wood_table"/>
-    <geom name="table_leg_fr" type="box" pos="0.50 -0.30 0.20" size="0.03 0.03 0.20" material="mat_wood_table"/>
-    <geom name="table_leg_bl" type="box" pos="-0.50 0.30 0.20" size="0.03 0.03 0.20" material="mat_wood_table"/>
-    <geom name="table_leg_br" type="box" pos="-0.50 -0.30 0.20" size="0.03 0.03 0.20" material="mat_wood_table"/>
+    <!-- tabletop -->
+    <geom name="table_top" type="box"
+          pos="0 0 0.595" size="0.62 0.42 0.035"
+          material="mat_wood_table"/>
+    <geom name="table_helper_front" type="box"
+          pos="0 0.295 0.275" size="0.450 0.012 0.275"
+          rgba="0 0 0 0"/>
+    <geom name="table_helper_back" type="box"
+          pos="0 -0.295 0.275" size="0.450 0.012 0.275"
+          rgba="0 0 0 0"/>
+    <geom name="table_helper_left" type="box"
+          pos="-0.515 0 0.275" size="0.012 0.245 0.275"
+          rgba="0 0 0 0"/>
+    <geom name="table_helper_right" type="box"
+          pos="0.515 0 0.275" size="0.012 0.245 0.275"
+          rgba="0 0 0 0"/>
+    <geom name="table_top_bevel_front" type="box"
+          pos="0 0.395 0.555" size="0.58 0.012 0.012"
+          material="mat_wood_table"/>
+    <geom name="table_top_bevel_back" type="box"
+          pos="0 -0.395 0.555" size="0.58 0.012 0.012"
+          material="mat_wood_table"/>
+    <geom name="table_top_bevel_left" type="box"
+          pos="-0.595 0 0.555" size="0.012 0.36 0.012"
+          material="mat_wood_table"/>
+    <geom name="table_top_bevel_right" type="box"
+          pos="0.595 0 0.555" size="0.012 0.36 0.012"
+          material="mat_wood_table"/>
+
+    <!-- apron -->
+    <geom name="table_apron_front" type="box"
+          pos="0 0.335 0.515" size="0.53 0.025 0.045"
+          material="mat_wood_table"/>
+    <geom name="table_apron_back" type="box"
+          pos="0 -0.335 0.515" size="0.53 0.025 0.045"
+          material="mat_wood_table"/>
+    <geom name="table_apron_left" type="box"
+          pos="-0.535 0 0.515" size="0.025 0.29 0.045"
+          material="mat_wood_table"/>
+    <geom name="table_apron_right" type="box"
+          pos="0.535 0 0.515" size="0.025 0.29 0.045"
+          material="mat_wood_table"/>
+
+    <!-- legs -->
+    <geom name="table_leg_fl" type="box"
+          pos="0.515 0.295 0.255" size="0.032 0.032 0.255"
+          material="mat_wood_table"/>
+    <geom name="table_leg_fr" type="box"
+          pos="0.515 -0.295 0.255" size="0.032 0.032 0.255"
+          material="mat_wood_table"/>
+    <geom name="table_leg_rl" type="box"
+          pos="-0.515 0.295 0.255" size="0.032 0.032 0.255"
+          material="mat_wood_table"/>
+    <geom name="table_leg_rr" type="box"
+          pos="-0.515 -0.295 0.255" size="0.032 0.032 0.255"
+          material="mat_wood_table"/>
+
+    <!-- lower stretchers -->
+    <geom name="table_stretcher_left" type="box"
+          pos="-0.515 0 0.105" size="0.015 0.295 0.015"
+          material="mat_wood_table"/>
+    <geom name="table_stretcher_right" type="box"
+          pos="0.515 0 0.105" size="0.015 0.295 0.015"
+          material="mat_wood_table"/>
+    <geom name="table_stretcher_front" type="box"
+          pos="0 0.295 0.120" size="0.515 0.015 0.015"
+          material="mat_wood_table"/>
+    <geom name="table_stretcher_back" type="box"
+          pos="0 -0.295 0.120" size="0.515 0.015 0.015"
+          material="mat_wood_table"/>
+
   </body>
 </mujoco>
